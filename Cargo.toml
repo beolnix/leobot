@@ -1,0 +1,10 @@
+[package]
+name = "leobot"
+version = "0.1.0"
+authors = ["Danila <danila.atmakin@auto1.com>"]
+
+[dependencies]
+telegram-bot = "0.6"
+tokio-core = "0.1"
+futures = "0.1"
+rand = "0.4"
