@@ -10,12 +10,10 @@ use tokio_core::reactor::Core;
 use telegram_bot::*;
 
 use std::fs::File;
-use std::io::prelude::*;
 use std::io::{self, BufRead, BufReader};
 
 use rand::distributions::{IndependentSample, Range};
 
-use std::collections::HashMap;
 use rand::ThreadRng;
 
 struct Fortunes {
@@ -46,9 +44,9 @@ fn main() {
     let future = api.stream().for_each(|update| {
         if let UpdateKind::Message(message) = update.kind {
             if let MessageKind::Text { ref data, .. } = message.kind {
-                if (data == "/fortune") {                    
+                if data == "/fortune" {
                     api.spawn(message.text_reply(fortunes.random_fortune()));
-                } else if (data == "/help") {
+                } else if data == "/help" {
                     api.spawn(message.text_reply("/fortune - постит случайную фортунку с лора"));
                 }
             }
@@ -69,20 +67,20 @@ fn init_fortunes<'a>(data: Vec<String>) -> Fortunes {
     }
 }
 
-fn load_fortunes<'a>(path: &'a str) -> Vec<String> {
+fn load_fortunes(path: &str) -> Vec<String> {
     let f = File::open(&path).unwrap();
     let reader = BufReader::new(f);
     let result: io::Result<Vec<String>> = reader.lines().collect();
-    let rawData: Vec<String> = result.unwrap();
+    let raw_data: Vec<String> = result.unwrap();
     let mut result: Vec<String> = Vec::new();
-    let mut fortunePart: String = String::new();
+    let mut fortune_part: String = String::new();
 
-    for currentFortune in rawData {
-        if (currentFortune == "%") {
-            result.push(fortunePart);
-            fortunePart = String::new();
+    for current_fortune in raw_data {
+        if current_fortune == "%" {
+            result.push(fortune_part);
+            fortune_part = String::new();
         } else {
-            fortunePart = fortunePart + &currentFortune + "\n";
+            fortune_part = fortune_part + &current_fortune + "\n";
         }
     }
 
