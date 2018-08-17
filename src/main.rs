@@ -58,7 +58,7 @@ fn main() {
     core.run(future).unwrap();
 }
 
-fn init_fortunes<'a>(data: Vec<String>) -> Fortunes {
+fn init_fortunes(data: Vec<String>) -> Fortunes {
     let size = data.len();
     Fortunes {
         data: data,        
