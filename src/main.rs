@@ -11,59 +11,46 @@ use telegram_bot::*;
 
 use std::fs::File;
 use std::io::prelude::*;
+use std::io::{self, BufRead, BufReader};
 
 use rand::distributions::{IndependentSample, Range};
 
 use std::collections::HashMap;
+use rand::ThreadRng;
+
+struct Fortunes {
+    data: Vec<String>,    
+    step: Range<u32>,
+    rng: ThreadRng,
+}
+
+impl Fortunes {
+    pub fn random_fortune(&mut self) -> &str {
+        let choice: u32 = self.step.ind_sample(&mut self.rng);
+        let fortune = &self.data[choice as usize];
+        fortune
+    }
+}
 
 fn main() {
-    let mut f = File::open("./lor_fortunes.txt").expect("file not found");
-
-    let mut contents = String::new();
-    f.read_to_string(&mut contents)
-        .expect("something went wrong reading the file");
-
-    let vec: Vec<&str> = contents.split("\n").collect();
-
-    let mut currentFortune = "".to_string();
-    let mut count = 0;
-    let mut map: HashMap<u32, String> = HashMap::new();
-    for fortunePart in vec {
-        if (fortunePart != "%") {
-            currentFortune += &("\n".to_string() + fortunePart);
-        } else {
-            map.insert(count, currentFortune);
-            currentFortune = "".to_string();
-            count += 1;
-        }
-    }
+    let path = "./lor_fortunes.txt";
+    println!("Loading fortunes from file {}", path);
+    let data: Vec<String> = load_fortunes(path);    
+    let mut fortunes = init_fortunes(data);
+    println!("{} Fortunes loaded successfully", fortunes.data.len());
 
     let mut core = Core::new().unwrap();
-
     let token = env::var("TELEGRAM_TOKEN").unwrap();
     let api = Api::configure(token).build(core.handle()).unwrap();
-
-    // Fetch new updates via long poll method
+    
     let future = api.stream().for_each(|update| {
-
-        // If the received update contains a new message...
         if let UpdateKind::Message(message) = update.kind {
-
-            if let MessageKind::Text {ref data, ..} = message.kind {
-                // Print received text message to stdout.
-                println!("<{}>: {}", &message.from.first_name, data);
-                let step =  Range::new(0, count);
-                let mut rng = rand::thread_rng();
-                let choice = step.ind_sample(&mut rng);
-                let fortune = map.get(&choice).unwrap();
-
-                if (data == "/fortune") {
-                // Answer message with "Hi".
-                    api.spawn(message.text_reply(fortune));
+            if let MessageKind::Text { ref data, .. } = message.kind {
+                if (data == "/fortune") {                    
+                    api.spawn(message.text_reply(fortunes.random_fortune()));
                 } else if (data == "/help") {
                     api.spawn(message.text_reply("/fortune - постит случайную фортунку с лора"));
                 }
-
             }
         }
 
@@ -71,4 +58,33 @@ fn main() {
     });
 
     core.run(future).unwrap();
+}
+
+fn init_fortunes<'a>(data: Vec<String>) -> Fortunes {
+    let size = data.len();
+    Fortunes {
+        data: data,        
+        step: Range::new(0, size as u32),
+        rng: rand::thread_rng()
+    }
+}
+
+fn load_fortunes<'a>(path: &'a str) -> Vec<String> {
+    let f = File::open(&path).unwrap();
+    let reader = BufReader::new(f);
+    let result: io::Result<Vec<String>> = reader.lines().collect();
+    let rawData: Vec<String> = result.unwrap();
+    let mut result: Vec<String> = Vec::new();
+    let mut fortunePart: String = String::new();
+
+    for currentFortune in rawData {
+        if (currentFortune == "%") {
+            result.push(fortunePart);
+            fortunePart = String::new();
+        } else {
+            fortunePart = fortunePart + &currentFortune + "\n";
+        }
+    }
+
+    result
 }
