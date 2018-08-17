@@ -75,12 +75,12 @@ fn load_fortunes(path: &str) -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
     let mut fortune_part: String = String::new();
 
-    for current_fortune in raw_data {
-        if current_fortune == "%" {
+    for line in raw_data {
+        if line == "%" {
             result.push(fortune_part);
             fortune_part = String::new();
         } else {
-            fortune_part = fortune_part + &current_fortune + "\n";
+            fortune_part = fortune_part + &line + "\n";
         }
     }
 
